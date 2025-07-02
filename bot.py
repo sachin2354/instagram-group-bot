@@ -3,8 +3,9 @@ import random
 import time
 from instagrapi import Client
 
-USERNAME = os.environ.get("d3monic_girl24")
-PASSWORD = os.environ.get("Oggy420")
+# ✅ Fetch credentials from environment variables correctly
+USERNAME = os.environ.get("IG_USERNAME")
+PASSWORD = os.environ.get("IG_PASSWORD")
 
 # Replace with your Instagram GROUP thread IDs for your test group
 GROUP_THREAD_IDS = [
@@ -39,7 +40,7 @@ def send_group_messages_forever():
             except Exception as e:
                 print(f"❌ Failed to send to group {thread_id}: {e}")
             delay = random.randint(MIN_DELAY, MAX_DELAY)
-            print(f\"⏳ Sleeping {delay} seconds before next message.\")
+            print(f"⏳ Sleeping {delay} seconds before next message.")
             time.sleep(delay)
 
 if __name__ == "__main__":
