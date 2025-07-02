@@ -4,7 +4,7 @@ import time
 from instagrapi import Client
 
 # ✅ Fetch credentials from environment variables correctly
-USERNAME = os.environ.get("d3monic_girl24")
+USERNAME = os.environ.get("s4bkabaap90")
 PASSWORD = os.environ.get("Oggy420")
 
 # Replace with your Instagram GROUP thread IDs for your test group
