@@ -4,12 +4,12 @@ import time
 from instagrapi import Client
 
 # ✅ Fetch credentials from environment variables correctly
-USERNAME = os.environ.get("IG_USERNAME")
-PASSWORD = os.environ.get("IG_PASSWORD")
+USERNAME = os.environ.get("d3monic_girl24")
+PASSWORD = os.environ.get("Oggy420")
 
 # Replace with your Instagram GROUP thread IDs for your test group
 GROUP_THREAD_IDS = [
-    "18928978693886302",  # replace with your test group's thread ID
+    "8928978693886302",  # replace with your test group's thread ID
 ]
 
 MESSAGES = [
