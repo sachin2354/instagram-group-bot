@@ -1,107 +1,69 @@
-from instagrapi import Client
-import random
 import time
-from datetime import datetime
-import imaplib
-import email
-import re
-import os
+import random
 import json
+import requests
 
-# ---------- Configuration ----------
-USERNAME = os.environ.get("s4bkabaap90")
-PASSWORD = os.environ.get("Oggy420")
-EMAIL_USER = os.environ.get("sachinrndi877@gmail.com")
-EMAIL_PASS = os.environ.get("SERVEROFF")
+def load_config():
+    with open("config.json", "r") as f:
+        return json.load(f)
 
-# Load group IDs
-with open("group_ids.txt", "r") as f:
-    group_ids = [line.strip() for line in f if line.strip()]
+def load_messages():
+    with open("messages.txt", "r", encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip()]
 
-# Load messages
-with open("messages.txt", "r", encoding="utf-8") as f:
-    messages = [line.strip() for line in f if line.strip()]
+def log(message):
+    with open("log.txt", "a", encoding="utf-8") as log_file:
+        log_file.write(message + "\n")
+    print(message)
 
-cl = Client()
-
-# ---------- Auto-fetch IG Code ----------
-def get_latest_instagram_code():
-    try:
-        mail = imaplib.IMAP4_SSL("imap.gmail.com")
-        mail.login(EMAIL_USER, EMAIL_PASS)
-        mail.select("inbox")
-        result, data = mail.search(None, '(FROM "security@mail.instagram.com")')
-        id_list = data[0].split()
-        if not id_list:
-            return None
-        latest_email_id = id_list[-1]
-        result, data = mail.fetch(latest_email_id, "(RFC822)")
-        raw_email = data[0][1]
-        message = email.message_from_bytes(raw_email)
-        if message.is_multipart():
-            for part in message.walk():
-                if part.get_content_type() == "text/plain":
-                    email_body = part.get_payload(decode=True).decode()
-        else:
-            email_body = message.get_payload(decode=True).decode()
-        code_match = re.search(r'(\\d{6})', email_body)
-        if code_match:
-            return code_match.group(1)
-        return None
-    except Exception as e:
-        print(f"IMAP error: {e}")
-        return None
-
-# ---------- Challenge Code Handler ----------
-def challenge_code_handler(username, choice):
-    print(f"Waiting for verification code to {choice}...")
-    for _ in range(15):
-        code = get_latest_instagram_code()
-        if code:
-            print(f"Fetched code: {code}")
-            return code
-        time.sleep(10)
-    code_env = os.environ.get("IG_CODE")
-    if code_env:
-        print(f"Using IG_CODE from environment: {code_env}")
-        return code_env
-    print("Code could not be fetched automatically.")
-    exit()
-
-cl.challenge_code_handler = challenge_code_handler
-
-# ---------- Persistent Login ----------
-if os.path.exists("session.json"):
-    with open("session.json", "r") as f:
-        cl.set_settings(json.load(f))
-
-try:
-    cl.login(USERNAME, PASSWORD)
-    with open("session.json", "w") as f:
-        json.dump(cl.get_settings(), f)
-    print("Logged in successfully.")
-except Exception as e:
-    print(f"Login failed: {e}")
-    exit()
-
-# ---------- Messaging Loop ----------
-def send_message_to_groups():
-    message = random.choice(messages)
-    for group_id in group_ids:
-        try:
-            cl.direct_send(message, [], thread_ids=[group_id])
-            print(f"Sent to {group_id}: {message}")
-            time.sleep(random.uniform(10, 20))
-        except Exception as e:
-            print(f"Error sending to {group_id}: {e}")
-
-while True:
-    hour = datetime.now().hour
-    if 1 <= hour < 6:
-        print("Sleeping 1 hour (1 AM - 6 AM quiet hours)...")
-        time.sleep(3600)
+def get_inbox(session, headers):
+    response = session.get("https://i.instagram.com/api/v1/direct_v2/inbox/", headers=headers)
+    if response.status_code == 200:
+        return response.json()
     else:
-        send_message_to_groups()
-        sleep_time = random.uniform(900, 1800)
-        print(f"Sleeping {sleep_time/60:.2f} minutes before next round...")
-        time.sleep(sleep_time)
+        log(f"Failed to fetch inbox: {response.status_code}")
+        return None
+
+def is_group_thread(thread):
+    return len(thread.get("users", [])) > 1
+
+def send_message(session, headers, thread_id, text):
+    url = f"https://i.instagram.com/api/v1/direct_v2/threads/{thread_id}/items/"
+    data = {"text": text, "action": "send_item"}
+    response = session.post(url, headers=headers, data=data)
+    return response.status_code == 200
+
+def main():
+    config = load_config()
+    messages = load_messages()
+
+    session = requests.Session()
+    session.cookies.set("sessionid", config["sessionid"])
+    headers = {
+        "User-Agent": config["user_agent"],
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    replied_threads = set()
+
+    log("Bot started...")
+
+    while True:
+        inbox = get_inbox(session, headers)
+        if inbox:
+            threads = inbox.get("inbox", {}).get("threads", [])
+            for thread in threads:
+                thread_id = thread.get("thread_id")
+                if not thread_id or thread_id in replied_threads:
+                    continue
+                if is_group_thread(thread):
+                    msg = random.choice(messages)
+                    delay = random.uniform(config["min_delay"], config["max_delay"])
+                    time.sleep(delay)
+                    if send_message(session, headers, thread_id, msg):
+                        log(f"Replied to group {thread_id} with: {msg}")
+                        replied_threads.add(thread_id)
+        time.sleep(10)
+
+if __name__ == "__main__":
+    main()
