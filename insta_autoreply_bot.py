@@ -1,11 +1,7 @@
 import time
 import random
-import json
+import os
 import requests
-
-def load_config():
-    with open("config.json", "r") as f:
-        return json.load(f)
 
 def load_messages():
     with open("messages.txt", "r", encoding="utf-8") as f:
@@ -34,9 +30,14 @@ def send_message(session, headers, thread_id, text):
     return response.status_code == 200
 
 def main():
-    config = load_config()
-    messages = load_messages()
+    config = {
+        "sessionid": os.getenv("SESSION_ID"),
+        "user_agent": os.getenv("USER_AGENT", "Instagram 155.0.0.37.107 Android"),
+        "min_delay": float(os.getenv("MIN_DELAY", 0.2)),
+        "max_delay": float(os.getenv("MAX_DELAY", 2.0))
+    }
 
+    messages = load_messages()
     session = requests.Session()
     session.cookies.set("sessionid", config["sessionid"])
     headers = {
@@ -45,7 +46,6 @@ def main():
     }
 
     replied_threads = set()
-
     log("Bot started...")
 
     while True:
